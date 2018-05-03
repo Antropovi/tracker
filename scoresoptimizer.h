@@ -7,15 +7,15 @@ using namespace FFTTools;
 class ScoresOptimizer
 {
 public:
-    virtual ~ScoresOptimizer(){}
+    virtual ~ScoresOptimizer() {}
 
-    ScoresOptimizer(){};  // default constructor
-    ScoresOptimizer(std::vector<cv::Mat>& pscores_fs, int pite)
-        :scores_fs(pscores_fs), iterations(pite){}
+    ScoresOptimizer() {} // default constructor
+    ScoresOptimizer(std::vector<cv::Mat> &pscores_fs, int pite)
+        : scores_fs(pscores_fs), iterations(pite) {}
 
     void  compute_scores();
 
-    std::vector<cv::Mat> sample_fs(const std::vector<cv::Mat>& xf, cv::Size grid_sz = cv::Size(0, 0));
+    std::vector<cv::Mat> sample_fs(const std::vector<cv::Mat> &xf, cv::Size grid_sz = cv::Size(0, 0));
 
     inline float  get_disp_row()const  { return disp_row; }
     inline float  get_disp_col()const  { return disp_col; }

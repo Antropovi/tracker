@@ -9,15 +9,14 @@ Trainer::~Trainer()
 {
 }
 
-void                 Trainer::train_joint()
+void Trainer::train_joint()
 {
     //  Initial Gauss - Newton optimization of the filter and
     //  projection matrix.
 
     //  Index for the start of the last column of frequencies
     std::vector<int> lf_ind;
-    for (long i = 0; i < hf.size(); i++)
-    {
+    for (long i = 0; i < hf.size(); i++) {
         lf_ind.push_back(hf[i][0].rows * (hf[i][0].cols - 1));
     }
 
@@ -25,11 +24,9 @@ void                 Trainer::train_joint()
     std::vector<std::vector<cv::Mat> > init_samplesf = xlf;
     vector<cv::Mat> init_samplesf_H;
 
-    for (long i = 0; i < xlf.size(); i++)
-    {
+    for (long i = 0; i < xlf.size(); i++) {
         cv::Mat temp;
-        for (long j = 0; j < xlf[i].size(); j++)
-        {
+        for (long j = 0; j < xlf[i].size(); j++) {
             cv::Mat temp2 = xlf[i][j].t();
             temp.push_back(cv::Mat(1, xlf[i][j].size().area(), CV_32FC2, temp2.data));
         }
@@ -38,19 +35,17 @@ void                 Trainer::train_joint()
 
     //*** construct preconditioner ***
     float precond_reg_param = params.precond_reg_param,
-        precond_data_param = params.precond_data_param;
+          precond_data_param = params.precond_data_param;
 
     std::vector<std::vector<cv::Mat> > diag_M1;
-    for (long i = 0; i < sample_energy.size(); i++)
-    {
+    for (long i = 0; i < sample_energy.size(); i++) {
         cv::Mat mean(cv::Mat::zeros(sample_energy[i][0].size(), CV_32FC2));
         for (long j = 0; j < sample_energy[i].size(); j++)
             mean += sample_energy[i][j];
         mean = mean / sample_energy[i].size();   // mean equal to matlab
 
         vector<cv::Mat> temp_vec;
-        for (long j = 0; j < sample_energy[i].size(); j++)
-        {
+        for (long j = 0; j < sample_energy[i].size(); j++) {
             cv::Mat m;
             m = (1 - precond_data_param) * mean + precond_data_param * sample_energy[i][j];   // totally equal to matlab
             m = m * (1 - precond_reg_param) + precond_reg_param * reg_energy[i] * cv::Mat::ones(sample_energy[i][0].size(), CV_32FC2);
@@ -60,16 +55,14 @@ void                 Trainer::train_joint()
     }
 
     vector<cv::Mat> diag_M2;
-    for (long i = 0; i < proj_energy.size(); i++)
-    {
+    for (long i = 0; i < proj_energy.size(); i++) {
         diag_M2.push_back(real2complx(params.precond_proj_param * (proj_energy[i] + params.projection_reg)));
     }
 
     joint_out diag_M(diag_M1, diag_M2); // this is equal to matlab computation
 
     //**** training *****
-    for (long i = 0; i < params.init_GN_iter; i++)
-    {
+    for (long i = 0; i < params.init_GN_iter; i++) {
         //  Project sample with new matrix
         std::vector<std::vector<cv::Mat> > init_samplef_proj = project_sample(init_samplesf, projection_matrix);
         std::vector<std::vector<cv::Mat> > init_hf = hf;
@@ -84,32 +77,30 @@ void                 Trainer::train_joint()
         joint_out rhs_samplef(rhs_samplef1, rhs_samplef2);  //  this is equal to matlab computation
 
         vector<cv::Mat> deltaP;
-        for (long i = 0; i < projection_matrix.size(); i++)
-        {
+        for (long i = 0; i < projection_matrix.size(); i++) {
             deltaP.push_back(cv::Mat::zeros(projection_matrix[i].size(), projection_matrix[i].type()));
         }
 
         joint_fp jointFP(hf, deltaP);
 
         joint_out outPF = pcg_eco(init_samplef_proj, reg_filter, init_samplesf, init_samplesf_H, init_hf, params.projection_reg,
-                                    rhs_samplef,
-                                    diag_M,
-                                    jointFP);
+                                  rhs_samplef,
+                                  diag_M,
+                                  jointFP);
 
         // Make the filter symmetric(avoid roundoff errors)
         Features::symmetrize_filter(outPF.up_part);
 
         hf = outPF.up_part;
         // Add to the projection matrix
-        //projection_matrix = ProjAdd(projection_matrix, outPF.low_part);
         projection_matrix = projection_matrix + outPF.low_part;
     }
 
 }
 
 void Trainer::train_init(std::vector<std::vector<cv::Mat> > phf, std::vector<std::vector<cv::Mat> > phf_inc, vector<cv::Mat> pproj_matrix, std::vector<std::vector<cv::Mat> > pxlf, vector<cv::Mat> pyf,
-    vector<cv::Mat> preg_filter, std::vector<std::vector<cv::Mat> > psample_energy, vector<float> preg_energy, vector<cv::Mat> pproj_energy,
-    eco_params& params)
+                         vector<cv::Mat> preg_filter, std::vector<std::vector<cv::Mat> > psample_energy, vector<float> preg_energy, vector<cv::Mat> pproj_energy,
+                         eco_params &params)
 {
     hf     = phf;
     hf_inc = phf_inc;
@@ -124,16 +115,14 @@ void Trainer::train_init(std::vector<std::vector<cv::Mat> > phf, std::vector<std
 }
 
 
-std::vector<std::vector<cv::Mat> > Trainer::project_sample( const std::vector<std::vector<cv::Mat> >& x, const vector<cv::Mat>& projection_matrix)
+std::vector<std::vector<cv::Mat> > Trainer::project_sample(const std::vector<std::vector<cv::Mat> > &x, const vector<cv::Mat> &projection_matrix)
 {
     std::vector<std::vector<cv::Mat> > result;
 
-    for (long i = 0; i < x.size(); i++)
-    {
+    for (long i = 0; i < x.size(); i++) {
         //**** smaple projection ******
         cv::Mat x_mat;
-        for (long j = 0; j < x[i].size(); j++)
-        {
+        for (long j = 0; j < x[i].size(); j++) {
             cv::Mat t = x[i][j].t();
             x_mat.push_back(cv::Mat(1, x[i][j].size().area(), CV_32FC2, t.data));
         }
@@ -143,10 +132,10 @@ std::vector<std::vector<cv::Mat> > Trainer::project_sample( const std::vector<st
 
         //**** reconver to standard formation ****
         std::vector<cv::Mat> temp;
-        for (long j = 0; j < res_temp.cols; j++)
-        {
+        for (long j = 0; j < res_temp.cols; j++) {
             cv::Mat temp2 = res_temp.col(j);
-            cv::Mat tt; temp2.copyTo(tt);
+            cv::Mat tt;
+            temp2.copyTo(tt);
             cv::Mat temp3(x[i][0].cols, x[i][0].rows, CV_32FC2, tt.data);
             temp.push_back(temp3.t());
         }
@@ -156,17 +145,15 @@ std::vector<std::vector<cv::Mat> > Trainer::project_sample( const std::vector<st
 
 }
 
-std::vector<std::vector<cv::Mat> > Trainer::mtimesx(std::vector<std::vector<cv::Mat> >& x, vector<cv::Mat> y, bool _conj)
+std::vector<std::vector<cv::Mat> > Trainer::mtimesx(std::vector<std::vector<cv::Mat> > &x, vector<cv::Mat> y, bool _conj)
 {
     if (x.size() != y.size())
         assert("Unmatched size");
 
     std::vector<std::vector<cv::Mat> > res;
-    for (long i = 0; i < x.size(); i++)
-    {
+    for (long i = 0; i < x.size(); i++) {
         vector<cv::Mat> temp;
-        for (long j = 0; j < x[i].size(); j++)
-        {
+        for (long j = 0; j < x[i].size(); j++) {
             if (_conj)
                 temp.push_back(FFTTools::complexMultiplication(FFTTools::mat_conj(x[i][j]), y[i]));
             else
@@ -177,17 +164,16 @@ std::vector<std::vector<cv::Mat> > Trainer::mtimesx(std::vector<std::vector<cv::
     return res;
 }
 
-vector<cv::Mat>      Trainer::compute_rhs2(const vector<cv::Mat>& proj_mat, const vector<cv::Mat>& X_H, const std::vector<std::vector<cv::Mat> >& fyf, const vector<int>& lf_ind)
+vector<cv::Mat>      Trainer::compute_rhs2(const vector<cv::Mat> &proj_mat, const vector<cv::Mat> &X_H, const std::vector<std::vector<cv::Mat> > &fyf, const vector<int> &lf_ind)
 {
     vector<cv::Mat> res;
 
     vector<cv::Mat> fyf_vec = feat_vec(fyf);
-    for (long i = 0; i < X_H.size(); i++)
-    {
+    for (long i = 0; i < X_H.size(); i++) {
         cv::Mat temp;
         cv::Mat fyf_vect = fyf_vec[i].t();
         cv::Mat l1 = cmat_multi(X_H[i], fyf_vect),
-            l2 = cmat_multi(X_H[i].colRange(lf_ind[i], X_H[i].cols), fyf_vect.rowRange(lf_ind[i], fyf_vect.rows));
+                l2 = cmat_multi(X_H[i].colRange(lf_ind[i], X_H[i].cols), fyf_vect.rowRange(lf_ind[i], fyf_vect.rows));
 
         temp = real2complx(2 * FFTTools::real(l1 - l2)) + params.projection_reg * proj_mat[i];
         res.push_back(temp);
@@ -196,17 +182,15 @@ vector<cv::Mat>      Trainer::compute_rhs2(const vector<cv::Mat>& proj_mat, cons
     return res;
 }
 
-vector<cv::Mat>      Trainer::feat_vec(const std::vector<std::vector<cv::Mat> >& x)
+vector<cv::Mat>      Trainer::feat_vec(const std::vector<std::vector<cv::Mat> > &x)
 {
     if (x.empty())
         return vector<cv::Mat>();
 
     vector<cv::Mat> res;
-    for (long i = 0; i < x.size(); i++)
-    {
+    for (long i = 0; i < x.size(); i++) {
         cv::Mat temp;
-        for (long j = 0; j < x[i].size(); j++)
-        {
+        for (long j = 0; j < x[i].size(); j++) {
             cv::Mat temp2 = x[i][j].t();
             temp.push_back(cv::Mat(1, xlf[i][j].size().area(), CV_32FC2, temp2.data));
         }
@@ -216,10 +200,10 @@ vector<cv::Mat>      Trainer::feat_vec(const std::vector<std::vector<cv::Mat> >&
 }
 
 Trainer::joint_fp  Trainer::pcg_eco(
-    const std::vector<std::vector<cv::Mat> >& init_samplef_proj, const vector<cv::Mat>& reg_filter, const std::vector<std::vector<cv::Mat> >& init_samplef, const vector<cv::Mat>& init_samplesf_H, const std::vector<std::vector<cv::Mat> >& init_hf, float proj_reg, // right side of equation A(x)
-    const joint_out& rhs_samplef,  // the left side of the equation :b
-    const joint_out& diag_M,       // preconditionor
-    joint_fp& hf)                  // the union of filer and projection matirx: [f+delta(f) delta(p)]
+    const std::vector<std::vector<cv::Mat> > &init_samplef_proj, const vector<cv::Mat> &reg_filter, const std::vector<std::vector<cv::Mat> > &init_samplef, const vector<cv::Mat> &init_samplesf_H, const std::vector<std::vector<cv::Mat> > &init_hf, float proj_reg, // right side of equation A(x)
+    const joint_out &rhs_samplef,  // the left side of the equation :b
+    const joint_out &diag_M,       // preconditionor
+    joint_fp &hf)                  // the union of filer and projection matirx: [f+delta(f) delta(p)]
 {
     joint_fp fpOut;
 
@@ -227,7 +211,7 @@ Trainer::joint_fp  Trainer::pcg_eco(
 
     bool existM1 = true;  // exist preconditoner
     if (diag_M.low_part.empty())
-         existM1 = false; // no preconditioner
+        existM1 = false; // no preconditioner
 
     joint_fp x = hf;      // initialization of CG
 
@@ -239,9 +223,8 @@ Trainer::joint_fp  Trainer::pcg_eco(
     joint_out Ax = lhs_operation_joint(x, init_samplef_proj, reg_filter, init_samplef, init_samplesf_H, init_hf, params.projection_reg);
     joint_out r = joint_minus(rhs_samplef, Ax);
 
-    for (long ii = 0; ii < maxit; ii++)
-    {
-        joint_out y,z;
+    for (long ii = 0; ii < maxit; ii++) {
+        joint_out y, z;
         if (existM1) // exist preconditioner
             y = diag_precond(r, diag_M);
         else
@@ -257,8 +240,7 @@ Trainer::joint_fp  Trainer::pcg_eco(
 
         if (ii == 0 && p.low_part.empty())
             p = z;
-        else
-        {
+        else {
             beta = rho / rho1;
             beta = cv::max(0.0f, beta);
             p = z + p * beta;
@@ -267,16 +249,13 @@ Trainer::joint_fp  Trainer::pcg_eco(
 
         float pq = inner_product_joint(p, q);
 
-        if (pq <= 0 || pq > INT_MAX)
-        {
+        if (pq <= 0 || pq > INT_MAX) {
             assert("GC condition is not matched");
             break;
-        }
-        else
+        } else
             alpha = rho / pq;   // standard alpha
 
-        if (alpha <= 0 || alpha > INT_MAX)
-        {
+        if (alpha <= 0 || alpha > INT_MAX) {
             assert("GC condition alpha is not matched");
             break;
         }
@@ -290,9 +269,9 @@ Trainer::joint_fp  Trainer::pcg_eco(
     return x;
 }
 
-Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector<std::vector<cv::Mat> >& samplesf,
-    const vector<cv::Mat>& reg_filter, const std::vector<std::vector<cv::Mat> >& init_samplef, vector<cv::Mat>XH,
-    const std::vector<std::vector<cv::Mat> >&  init_hf, float proj_reg)
+Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp &hf, const std::vector<std::vector<cv::Mat> > &samplesf,
+        const vector<cv::Mat> &reg_filter, const std::vector<std::vector<cv::Mat> > &init_samplef, vector<cv::Mat>XH,
+        const std::vector<std::vector<cv::Mat> >  &init_hf, float proj_reg)
 {
     joint_out AX;
 
@@ -302,15 +281,14 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
 
     int num_features = fAndDel.size();
     vector<cv::Size> filter_sz;
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         filter_sz.push_back(fAndDel[i][0].size());
     }
 
     // find the maximum of size and its index
     vector<cv::Size>::iterator pos = max_element(filter_sz.begin(), filter_sz.end(), FFTTools::SizeCompare);
     long k1 = pos - filter_sz.begin();
-    cv::Size output_sz = cv::Size(2 * pos->width -1, pos->height);
+    cv::Size output_sz = cv::Size(2 * pos->width - 1, pos->height);
 
     //** Compute the operation corresponding to the data term in the optimization
     //** (blockwise matrix multiplications)
@@ -319,8 +297,7 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
     // 1 :sum over all features and feature blocks (socres of all kinds of layers )
     vector<cv::Mat> scores = Features::computeFeatSores(samplesf, fAndDel);
     cv::Mat sh(cv::Mat::zeros(scores[k1].size(), scores[k1].type()));
-    for (long i = 0; i < scores.size(); i++)
-    {
+    for (long i = 0; i < scores.size(); i++) {
         int pad = (output_sz.height - scores[i].rows) / 2;
         cv::Rect roi = cv::Rect(pad, pad, scores[i].cols, scores[i].rows);
         cv::Mat  temp = scores[i] + sh(roi);
@@ -329,11 +306,9 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
 
     // 2: multiply with the transpose : A^H .* A .* f
     std::vector<std::vector<cv::Mat> > hf_out1;
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         vector<cv::Mat> tmp;
-        for (long j = 0; j < samplesf[i].size(); j++)
-        {
+        for (long j = 0; j < samplesf[i].size(); j++) {
             int pad = (output_sz.height - scores[i].rows) / 2;
             cv::Mat roi = sh(cv::Rect(pad, pad, scores[i].cols, scores[i].rows));
             cv::Mat ttt = mat_conj(roi);
@@ -347,12 +322,10 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
     //** each feature dimension with the DFT of w, and the tramsposed operation)
     //** add the regularization part hf_conv = cell(1, 1, num_features);
 
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         int reg_pad = cv::min(reg_filter[i].cols - 1, fAndDel[i][0].cols - 1);
         vector<cv::Mat> hf_conv;
-        for (long j = 0; j < fAndDel[i].size(); j++)
-        {
+        for (long j = 0; j < fAndDel[i].size(); j++) {
             int c = fAndDel[i][j].cols;
             cv::Mat temp = fAndDel[i][j].colRange(c - reg_pad - 1, c - 1).clone(); //*** must be clone or copy !!!
             rot90(temp, 3);
@@ -376,8 +349,7 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
     vector<cv::Mat> BP_cell = Features::computeFeatSores(project_sample(init_samplef, deltaP), init_hf);
 
     cv::Mat BP(cv::Mat::zeros(BP_cell[k1].size(), BP_cell[k1].type()));
-    for (long i = 0; i < scores.size(); i++)
-    {
+    for (long i = 0; i < scores.size(); i++) {
         int pad = (output_sz.height - BP_cell[i].rows) / 2;
         cv::Rect roi = cv::Rect(pad, pad, BP_cell[i].cols, BP_cell[i].rows);
         cv::Mat  temp = BP_cell[i] + BP(roi);
@@ -387,11 +359,9 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
     //2: A^H .* BP = A^H * B * P
     std::vector<std::vector<cv::Mat> > fBP, shBP;
 
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         vector<cv::Mat> vfBP, vshBP;
-        for (long j = 0; j < hf_out1[i].size(); j++)
-        {
+        for (long j = 0; j < hf_out1[i].size(); j++) {
             int pad = (output_sz.height - hf_out1[i][0].rows) / 2;
             cv::Rect roi = cv::Rect(pad, pad, hf_out1[i][0].cols, hf_out1[i][0].rows);
             cv::Mat temp = FFTTools::complexMultiplication(BP(roi), mat_conj(samplesf[i][j].clone()));   // A^H * BP
@@ -406,8 +376,7 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
 
     // hf_out2 = cell(1, 1, num_features);
     std::vector<cv::Mat> hf_out2;
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         // the index of last frequency colunm starts
         int fi = hf_out1[i][0].rows * (hf_out1[i][0].cols - 1) + 0;
 
@@ -429,12 +398,11 @@ Trainer::joint_out  Trainer::lhs_operation_joint(joint_fp& hf, const std::vector
 
 }
 
-void Trainer::train_filter(const vector<std::vector<std::vector<cv::Mat> >>& samplesf, const vector<float>& sample_weights, const std::vector<std::vector<cv::Mat> >& sample_energy)
+void Trainer::train_filter(const vector<std::vector<std::vector<cv::Mat> >> &samplesf, const vector<float> &sample_weights, const std::vector<std::vector<cv::Mat> > &sample_energy)
 {
     //1:  Construct the right hand side vector
     std::vector<std::vector<cv::Mat> > rhs_samplef = Features::FeatScale(samplesf[0], sample_weights[0]);
-    for (long i = 1; i < samplesf.size(); i++)
-    {
+    for (long i = 1; i < samplesf.size(); i++) {
         rhs_samplef = Features::FeatScale(samplesf[i], sample_weights[i]) + rhs_samplef;
     }
     rhs_samplef = mtimesx(rhs_samplef, yf, 1);
@@ -443,16 +411,14 @@ void Trainer::train_filter(const vector<std::vector<std::vector<cv::Mat> >>& sam
     std::vector<std::vector<cv::Mat> > diag_M;
     float precond_reg_param = params.precond_reg_param,
           precond_data_param = params.precond_data_param;
-    for (long i = 0; i < sample_energy.size(); i++)
-    {
+    for (long i = 0; i < sample_energy.size(); i++) {
         cv::Mat mean(cv::Mat::zeros(sample_energy[i][0].size(), CV_32FC2));
         for (long j = 0; j < sample_energy[i].size(); j++)
             mean += sample_energy[i][j];
         mean = mean / sample_energy[i].size();   // mean equal to matlab
 
         vector<cv::Mat> temp_vec;
-        for (long j = 0; j < sample_energy[i].size(); j++)
-        {
+        for (long j = 0; j < sample_energy[i].size(); j++) {
             cv::Mat m;
             m = (1 - precond_data_param) * mean + precond_data_param * sample_energy[i][j];   // totally equal to matlab
             m = m * (1 - precond_reg_param) + precond_reg_param * reg_energy[i] * cv::Mat::ones(sample_energy[i][0].size(), CV_32FC2);
@@ -466,10 +432,10 @@ void Trainer::train_filter(const vector<std::vector<std::vector<cv::Mat> >>& sam
 
 }
 
-std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::vector<std::vector<cv::Mat> >>& samplesf, const vector<cv::Mat>& reg_filter, const vector<float> &sample_weights,  // right side of equation A(x)
-                       const std::vector<std::vector<cv::Mat> >& rhs_samplef,  // the left side of the equation
-                       const std::vector<std::vector<cv::Mat> >& diag_M,       // preconditionor
-                       std::vector<std::vector<cv::Mat> >& hf)                   // the union of filter [f+delta(f) delta(p)]
+std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::vector<std::vector<cv::Mat> >> &samplesf, const vector<cv::Mat> &reg_filter, const vector<float> &sample_weights,  // right side of equation A(x)
+        const std::vector<std::vector<cv::Mat> > &rhs_samplef,  // the left side of the equation
+        const std::vector<std::vector<cv::Mat> > &diag_M,       // preconditionor
+        std::vector<std::vector<cv::Mat> > &hf)                   // the union of filter [f+delta(f) delta(p)]
 {
     std::vector<std::vector<cv::Mat> > res;
 
@@ -484,13 +450,11 @@ std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::v
     // Load the CG state
     std::vector<std::vector<cv::Mat> > p, r_prev;
     float rho = 1, rho1, alpha, beta;
-    for (long i = 0; i < hf.size(); ++i)
-    {
+    for (long i = 0; i < hf.size(); ++i) {
         r_prev.push_back(vector<cv::Mat>(hf[i].size(), cv::Mat::zeros(hf[i][0].size(), CV_32FC2)));
     }
 
-    if (!state.p.empty())
-    {
+    if (!state.p.empty()) {
         p = state.p;
         rho = state.rho / 0.5076;
         r_prev = state.r_prev;
@@ -498,13 +462,9 @@ std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::v
 
     //*** calculate A(x)
     std::vector<std::vector<cv::Mat> > Ax = lhs_operation(x, samplesf, reg_filter, sample_weights);
-    //std::vector<std::vector<cv::Mat> > r = joint_minus(rhs_samplef, Ax);
-
-    //std::vector<std::vector<cv::Mat> > r = FeatMinus(rhs_samplef, Ax);
     std::vector<std::vector<cv::Mat> > r = rhs_samplef - Ax;
 
-    for (long ii = 0; ii < maxit; ii++)
-    {
+    for (long ii = 0; ii < maxit; ii++) {
         std::vector<std::vector<cv::Mat> > y, z;
         if (existM1) // exist preconditioner
             y = Features::FeatDotDivide(r, diag_M);
@@ -518,14 +478,12 @@ std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::v
 
         rho1 = rho;
         rho = inner_product(r, z);
-        if ((rho == 0) || (abs(rho) >= INT_MAX) || (rho == NAN) || std::isnan(rho))
-        {
+        if ((rho == 0) || (abs(rho) >= INT_MAX) || (rho == NAN) || std::isnan(rho)) {
             break;
         }
         if (ii == 0 && p.empty())
             p = z;
-        else
-        {
+        else {
             float rho2 = inner_product(r_prev, z);
             beta = (rho - rho2) / rho1;
 
@@ -533,35 +491,29 @@ std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::v
                 break;
 
             beta = cv::max(0.0f, beta);
-            //p = FeatAdd(z, FeatScale(p, beta));
-            p = z + Features::FeatScale(p,beta);
+            p = z + Features::FeatScale(p, beta);
         }
 
         std::vector<std::vector<cv::Mat> > q = lhs_operation(p, samplesf, reg_filter, sample_weights);
         float pq = inner_product(p, q);
 
-        if (pq <= 0 || (abs(pq) > INT_MAX) || (pq == NAN) || std::isnan(pq))
-        {
+        if (pq <= 0 || (abs(pq) > INT_MAX) || (pq == NAN) || std::isnan(pq)) {
             assert("GC condition is not matched");
             break;
-        }
-        else
+        } else
             alpha = rho / pq;   // standard alpha
 
-        if ((abs(alpha) > INT_MAX) || (alpha == NAN) || std::isnan(alpha))
-        {
+        if ((abs(alpha) > INT_MAX) || (alpha == NAN) || std::isnan(alpha)) {
             assert("GC condition alpha is not matched");
             break;
         }
         r_prev = r;
 
         // form new iterate
-        //x = FeatAdd(x, FeatScale(p, alpha));
-        x = x + Features::FeatScale(p,alpha);
+        x = x + Features::FeatScale(p, alpha);
 
         if (ii < maxit - 1)
-            //r = FeatMinus(r, FeatScale(q, alpha));
-            r = r - Features::FeatScale(q,alpha);
+            r = r - Features::FeatScale(q, alpha);
     }
 
     state.p = p;
@@ -571,13 +523,12 @@ std::vector<std::vector<cv::Mat> >   Trainer::pcg_eco_filter(const vector<std::v
     return x;
 }
 
-std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vector<cv::Mat> >& hf, const vector<std::vector<std::vector<cv::Mat> >>& samplesf, const vector<cv::Mat>& reg_filter, const vector<float> &sample_weights)
+std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vector<cv::Mat> > &hf, const vector<std::vector<std::vector<cv::Mat> >> &samplesf, const vector<cv::Mat> &reg_filter, const vector<float> &sample_weights)
 {
     std::vector<std::vector<cv::Mat> > res;
     int num_features = hf.size();
     vector<cv::Size> filter_sz;
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         filter_sz.push_back(hf[i][0].size());
     }
 
@@ -588,12 +539,10 @@ std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vec
 
     //2; sum over all features and feature blocks (socres of all kinds of layers )
     vector<cv::Mat> sh;
-    for (long s = 0; s < samplesf.size(); s++)
-    {
+    for (long s = 0; s < samplesf.size(); s++) {
         vector<cv::Mat> scores = Features::computeFeatSores(samplesf[s], hf);
         cv::Mat sh_tmp(cv::Mat::zeros(scores[k1].size(), scores[k1].type()));
-        for (long i = 0; i < scores.size(); i++)
-        {
+        for (long i = 0; i < scores.size(); i++) {
             int pad = (output_sz.height - scores[i].rows) / 2;
             cv::Rect roi = cv::Rect(pad, pad, scores[i].cols, scores[i].rows);
             cv::Mat  temp = scores[i] + sh_tmp(roi);
@@ -605,15 +554,12 @@ std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vec
 
     //3: multiply with the transpose : A^H .* A .* f
     std::vector<std::vector<cv::Mat> > hf_out;
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         vector<cv::Mat> tmp;
-        for (long j = 0; j < hf[i].size(); j++)
-        {
+        for (long j = 0; j < hf[i].size(); j++) {
             int pad = (output_sz.height - hf[i][j].rows) / 2;
             cv::Mat res(cv::Mat::zeros(hf[i][j].size(), hf[i][j].type()));
-            for (long s = 0; s < sh.size(); s++)
-            {
+            for (long s = 0; s < sh.size(); s++) {
                 cv::Mat roi = sh[s](cv::Rect(pad, pad, hf[i][j].cols, hf[i][j].rows));
                 res += FFTTools::complexMultiplication(mat_conj(roi), samplesf[s][i][j]);
             }
@@ -623,12 +569,10 @@ std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vec
     }
 
     //4; compute the operation corresponding to the regularization term
-    for (long i = 0; i < num_features; i++)
-    {
+    for (long i = 0; i < num_features; i++) {
         int reg_pad = cv::min(reg_filter[i].cols - 1, hf[i][0].cols - 1);
         vector<cv::Mat> hf_conv;
-        for (long j = 0; j < hf[i].size(); j++)
-        {
+        for (long j = 0; j < hf[i].size(); j++) {
             int c = hf[i][j].cols;
             cv::Mat temp = hf[i][j].colRange(c - reg_pad - 1, c - 1).clone(); //*** must be clone or copy !!!
             rot90(temp, 3);
@@ -648,24 +592,22 @@ std::vector<std::vector<cv::Mat> >   Trainer::lhs_operation(std::vector<std::vec
     return res;
 }
 
-std::vector<std::vector<cv::Mat> >              Trainer::conv2std(const vector<std::vector<std::vector<cv::Mat> >>& samplesf)const
+std::vector<std::vector<cv::Mat> > Trainer::conv2std(const vector<std::vector<std::vector<cv::Mat> >> &samplesf)const
 {
     std::vector<std::vector<cv::Mat> > res;
 
     return res;
 }
 
-Trainer::joint_out   Trainer::joint_minus(const joint_out&a, const joint_out& b)
+Trainer::joint_out Trainer::joint_minus(const joint_out &a, const joint_out &b)
 {
     joint_out residual;
 
     std::vector<std::vector<cv::Mat> > up_rs;
     std::vector<cv::Mat> low_rs;
-    for (long i = 0; i < a.up_part.size(); i++)
-    {
+    for (long i = 0; i < a.up_part.size(); i++) {
         vector<cv::Mat> tmp;
-        for (long j = 0; j < a.up_part[i].size(); j++)
-        {
+        for (long j = 0; j < a.up_part[i].size(); j++) {
             tmp.push_back(a.up_part[i][j] - b.up_part[i][j]);
         }
         up_rs.push_back(tmp);
@@ -677,17 +619,15 @@ Trainer::joint_out   Trainer::joint_minus(const joint_out&a, const joint_out& b)
     return residual;
 }
 
-Trainer::joint_out   Trainer::diag_precond(const joint_out&a, const joint_out& b)
+Trainer::joint_out Trainer::diag_precond(const joint_out &a, const joint_out &b)
 {
     joint_out res;
 
     std::vector<std::vector<cv::Mat> > up_rs;
     std::vector<cv::Mat> low_rs;
-    for (long i = 0; i < a.up_part.size(); i++)
-    {
+    for (long i = 0; i < a.up_part.size(); i++) {
         vector<cv::Mat> tmp;
-        for (long j = 0; j < a.up_part[i].size(); j++)
-        {
+        for (long j = 0; j < a.up_part[i].size(); j++) {
             tmp.push_back(complexDivision(a.up_part[i][j], b.up_part[i][j]));
         }
         up_rs.push_back(tmp);
@@ -700,14 +640,12 @@ Trainer::joint_out   Trainer::diag_precond(const joint_out&a, const joint_out& b
     return res;
 }
 
-float Trainer::inner_product_joint(const joint_out&a, const joint_out& b)
+float Trainer::inner_product_joint(const joint_out &a, const joint_out &b)
 {
     float ip = 0;
 
-    for (long i = 0; i < a.up_part.size(); i++)
-    {
-        for (long j = 0; j < a.up_part[i].size(); j++)
-        {
+    for (long i = 0; i < a.up_part.size(); i++) {
+        for (long j = 0; j < a.up_part[i].size(); j++) {
             int clen = a.up_part[i][j].cols;
             cv::Mat temp1 = real(complexMultiplication(mat_conj(a.up_part[i][j].clone()), b.up_part[i][j]));
             cv::Mat temp2 = real(complexMultiplication(mat_conj(a.up_part[i][j].col(clen - 1).clone()), b.up_part[i][j].col(clen - 1)));
@@ -719,14 +657,12 @@ float Trainer::inner_product_joint(const joint_out&a, const joint_out& b)
     return ip;
 }
 
-float                  Trainer::inner_product(const std::vector<std::vector<cv::Mat> >& a, const std::vector<std::vector<cv::Mat> >& b)
+float Trainer::inner_product(const std::vector<std::vector<cv::Mat> > &a, const std::vector<std::vector<cv::Mat> > &b)
 {
     float ip = 0;
 
-    for (long i = 0; i < a.size(); i++)
-    {
-        for (long j = 0; j < a[i].size(); j++)
-        {
+    for (long i = 0; i < a.size(); i++) {
+        for (long j = 0; j < a[i].size(); j++) {
             int clen = a[i][j].cols;
             cv::Mat temp1 = real(complexMultiplication(mat_conj(a[i][j].clone()), b[i][j]));
             cv::Mat temp2 = real(complexMultiplication(mat_conj(a[i][j].col(clen - 1).clone()), b[i][j].col(clen - 1)));

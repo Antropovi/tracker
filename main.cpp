@@ -11,10 +11,11 @@ using namespace cv;
 bool gotBB = false;
 bool drawing_box = false;
 cv::Rect2d box;
-void mouseHandler(int event, int x, int y, int flags, void *param){
-    switch (event){
+void mouseHandler(int event, int x, int y, int flags, void *param)
+{
+    switch (event) {
     case EVENT_MOUSEMOVE:
-        if (drawing_box){
+        if (drawing_box) {
             box.width = x - box.x;
             box.height = y - box.y;
         }
@@ -25,11 +26,11 @@ void mouseHandler(int event, int x, int y, int flags, void *param){
         break;
     case EVENT_LBUTTONUP:
         drawing_box = false;
-        if (box.width < 0){
+        if (box.width < 0) {
             box.x += box.width;
             box.width *= -1;
         }
-        if (box.height < 0){
+        if (box.height < 0) {
             box.y += box.height;
             box.height *= -1;
         }
@@ -38,7 +39,8 @@ void mouseHandler(int event, int x, int y, int flags, void *param){
     }
 }
 
-void drawBox(cv::Mat& image, cv::Rect box, cv::Scalar color, int thick){
+void drawBox(cv::Mat &image, cv::Rect box, cv::Scalar color, int thick)
+{
     rectangle(image, cvPoint(box.x, box.y), cvPoint(box.x + box.width, box.y + box.height), color, thick);
 }
 
@@ -48,8 +50,7 @@ int main(int argc, char *argv[])
 
     VideoCapture video("/home/salen/Videos/TestVid.avi");
     // Exit if video is not opened
-    if(!video.isOpened())
-    {
+    if (!video.isOpened()) {
         cout << "Could not read video file" << endl;
         return 1;
 
@@ -62,8 +63,7 @@ int main(int argc, char *argv[])
 
     cv::Mat temp;
     frame.copyTo(temp);
-    while (!gotBB)
-    {
+    while (!gotBB) {
         drawBox(frame, box, cv::Scalar(0, 0, 255), 1);
         cv::imshow("Test", frame);
         temp.copyTo(frame);
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
     auto writer = cv::VideoWriter("MyEcoCppRes1234456.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, frame.size());
 
-    while(num++ < 10000){
+    while (num++ < 10000) {
         video >> frame;
 
         tick1 = cv::getTickCount();
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
         cv::Mat resframe = frame.clone();
         cv::rectangle(resframe, box, cv::Scalar(0, 255, 0));
 
-        putText(resframe, "FPS   " + to_string((double)num / ((double)res / cv::getTickFrequency())), Point(100,20), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50,170,50),2);
+        putText(resframe, "FPS   " + to_string((double)num / ((double)res / cv::getTickFrequency())), Point(100, 20), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50), 2);
 
         cv::imshow("Test", resframe);
         cv::waitKey(1);
